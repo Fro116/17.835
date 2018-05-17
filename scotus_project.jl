@@ -16,7 +16,7 @@ function analyze()
      end
      cases[:year] = years
 
-     plot(title = "Number of Laws Declared Unconstitutional", xlab = "Year", ylab = "Frequency")
+     plot(title = "Number of Laws Declared Unconstitutional", xlab = "Year", ylab = "Frequency",  bgcolor=RGBA(0.0,0.0,0.0,0))
      topics = ["No declaration of unconstitutionality",
                "Act of Congress",
                "State or Territorial Law",
@@ -46,7 +46,7 @@ function topics()
      for k = 1:length(labels)
           append!(sorted, get(freqs, k, 0))
      end
-     bar(labels, sorted, label = "", xlab = "Topics", ylab = "Number of Cases", title = "Topics in Unconstitutional Cases")
+     bar(labels, sorted, label = "", xlab = "Topics", ylab = "Number of Cases", title = "Topics in Unconstitutional Cases", bgcolor=RGBA(0.0,0.0,0.0,0))
      png("hist1")
 
      freqs = countmap(cases[:issueArea])
@@ -54,11 +54,11 @@ function topics()
      for k = 1:length(labels)
           append!(sorted, get(freqs, k, 0))
      end
-     bar(labels, sorted, label = "", xlab = "Topics", ylab = "Number of Cases", title = "Topics in All Cases")
+     bar(labels, sorted, label = "", xlab = "Topics", ylab = "Number of Cases", title = "Topics in All Cases",  bgcolor=RGBA(0.0,0.0,0.0,0))
      png("hist2")
 end
 
-function linearModel()
+function rankings()
      df = DataFrame()
      df[:caseName] = cases[:caseName]
      df[:declarationUncon] = cases[:declarationUncon]
@@ -69,37 +69,33 @@ function linearModel()
           caseNames[name] = i
      end
 
-     names = Dict{String,Integer}()
-     issues = Dict{Integer, Integer}()
-     i = 0
      freq = countmap(justices[:justiceName])
      for (k, v) in freq
-          names[k] = i
-          df[Symbol(i)] = 0
-          i += 1
-     end
-     freq = countmap(cases[:issueArea])
-     for (k, v) in freq
-          if isna(k)
-               k = 0
-          end
-          issues[k] = i
-          df[Symbol(i)] = 0
-          i += 1
+          df[Symbol(k)] = -1
      end
 
-     for i = 1:size(cases)[1]
-          topic = cases[:issueArea][i]
-          if isna(topic)
-               topic = 0
-          end
-          df[Symbol(issues[topic])][i] = 1
-     end
      for i = 1:size(justices)[1]
           name = justices[:justiceName][i]
           case = justices[:caseName][i]
-          df[Symbol(names[name])][caseNames[case]] = 1
+          vote = justices[:vote][i]
+          if isna(vote)
+               vote = 0
+          end
+          df[Symbol(name)][caseNames[case]] = vote
+     end
+
+     uncon = df |> @filter(_.declarationUncon == 3) |> DataFrame
+     freq = countmap(justices[:justiceName])
+     names = []
+     for (k, v) in freq
+          votes = countmap(uncon[Symbol(k)])
+          yes = get(votes, 1, 0) + get(votes, 3, 0) + get(votes, 4, 0)
+          no = get(votes, 2, 0) + get(votes, 6, 0) + get(votes, 7, 0)
+          rat = yes/(yes+no)
+          if rat < 0.5
+               println(k, " ", yes, " ", no, " ", rat)
+          end
      end
 end
 
-linearModel()
+analyze()
